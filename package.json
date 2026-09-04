@@ -1,0 +1,17 @@
+{
+  "name": "drink-counter",
+  "version": "1.0.0",
+  "description": "Shared drink counter with a global goal, per-user leaderboard, and time series — backed by Firestore.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.10.0",
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+.DS_Store
+
+# Never commit credentials / keys
+.env
+.env.*
+*.pem
+*-key.json
+*credentials*.json
+service-account*.json
+gcp-*.json
