@@ -1,0 +1,68 @@
+name: Deploy to Cloud Run
+
+# Deploys the Drink Counter to Google Cloud Run.
+# Auth uses Workload Identity Federation (keyless — no service-account JSON key).
+#
+# Required repo config (Settings -> Secrets and variables -> Actions):
+#   Secrets:
+#     GCP_WIF_PROVIDER      full provider resource name:
+#                           projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/<POOL>/providers/<PROVIDER>
+#     GCP_DEPLOY_SA         deployer service account email:
+#                           github-deployer@<PROJECT_ID>.iam.gserviceaccount.com
+#   Variables:
+#     GCP_PROJECT_ID        your GCP project id
+#     GCP_REGION            e.g. us-central1
+#     CLOUD_RUN_SERVICE     e.g. drink-counter
+# See scripts/setup-wif.sh for the one-time GCP setup that creates these.
+
+on:
+  push:
+    branches: [main]
+    # Skip runs for docs-only changes.
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch: {}
+
+# One deploy at a time; newer pushes cancel older in-flight runs.
+concurrency:
+  group: deploy-cloud-run
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # required to mint the OIDC token for WIF
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run (build from source)
+        run: |
+          gcloud run deploy "${{ vars.CLOUD_RUN_SERVICE }}" \
+            --source . \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --allow-unauthenticated \
+            --quiet
+
+      - name: Show service URL
+        run: |
+          URL=$(gcloud run services describe "${{ vars.CLOUD_RUN_SERVICE }}" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --format='value(status.url)')
+          echo "Deployed: $URL"
+          echo "### :rocket: Deployed to $URL" >> "$GITHUB_STEP_SUMMARY"

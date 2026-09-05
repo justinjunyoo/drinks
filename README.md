@@ -57,6 +57,39 @@ gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
 
 ---
 
+## Auto-deploy from GitHub (CI/CD)
+
+Instead of running `gcloud` by hand, you can have **GitHub Actions** deploy every
+push to `main`. Authentication uses **Workload Identity Federation** — GitHub
+proves its identity to GCP over OIDC, so there is **no service-account key** to
+store or rotate.
+
+**One-time setup** (run locally or in Cloud Shell, from an account with
+Owner/Editor on the project):
+
+```bash
+PROJECT_ID=your-project-id ./scripts/setup-wif.sh
+```
+
+The script enables the APIs, creates a least-privilege deployer service account,
+sets up the Workload Identity Pool/provider **restricted to this repo**, and
+prints the exact values to add under
+**GitHub → repo Settings → Secrets and variables → Actions**:
+
+| Kind     | Name                | Value |
+|----------|---------------------|-------|
+| Secret   | `GCP_WIF_PROVIDER`  | `projects/…/workloadIdentityPools/…/providers/…` |
+| Secret   | `GCP_DEPLOY_SA`     | `github-deployer@PROJECT_ID.iam.gserviceaccount.com` |
+| Variable | `GCP_PROJECT_ID`    | your project id |
+| Variable | `GCP_REGION`        | e.g. `us-central1` |
+| Variable | `CLOUD_RUN_SERVICE` | e.g. `drink-counter` |
+
+Once those are set, pushing to `main` (or running **Deploy to Cloud Run** from
+the **Actions** tab) builds from source and deploys. The workflow lives at
+`.github/workflows/deploy.yml`.
+
+---
+
 ## Use it this weekend
 
 1. Open your Service URL.
